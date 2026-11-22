@@ -1,6 +1,6 @@
 # 用量与费用（DSH 插件）
 
-[English](README.en.md) · [MIT License](LICENSE) · [GitHub](https://github.com/eakshelling/dsh-usage-strip) · [npm](https://www.npmjs.com/package/dsh-usage-strip)
+[English](README.en.md) · [MIT License](LICENSE) · [GitHub](https://github.com/eakshelling/dsh-usage-strip) · [Release](https://github.com/eakshelling/dsh-usage-strip/releases/latest)
 
 在 DSH Web 输入框下方增加一条紧凑的用量条，默认显示 **`总价≈¥… 今日 … tok≈¥…`**：总价优先用输入框旁内置 `tokenUsage` 读数按当前峰谷价估算，日志精确值保留在面板中；今日是本对话今天（北京时间）的 token 数与费用。点击后弹出面板，可切换「本对话 / 全部会话」，提供参照 [DeepSeek 开放平台用量页](https://platform.deepseek.com/usage) 的内容：按天趋势、按模型拆分、缓存命中/未命中/输出构成、请求数，以及 token 价格变化（当前峰谷价、下次切换时间、官方调价时间线）。
 
@@ -36,7 +36,7 @@
 
 ## 安装
 
-发布后可从 DSH 插件市场搜索 `dsh-usage-strip` 安装；npm 包名为 [`dsh-usage-strip`](https://www.npmjs.com/package/dsh-usage-strip)，当前版本 `1.3.1`。
+npm 包 `dsh-usage-strip` **尚未发布**；当前请使用 [Release 附件](https://github.com/eakshelling/dsh-usage-strip/releases/latest/download/dsh-usage-strip.tgz)（`dsh-usage-strip.tgz`，版本 `1.3.1`），或下面的本地目录安装方式。插件市场条目待仓库满足收录条件后提交。
 
 本地开发目录仍可直接安装，方式二选一：
 
