@@ -1,6 +1,6 @@
 # 用量与费用（DSH 插件）
 
-[English](README.en.md) · [MIT License](LICENSE) · [GitHub](https://github.com/Eakshell/dsh-usage-strip) · [npm](https://www.npmjs.com/package/dsh-usage-strip)
+[English](README.en.md) · [MIT License](LICENSE) · [GitHub](https://github.com/eakshelling/dsh-usage-strip) · [npm](https://www.npmjs.com/package/dsh-usage-strip)
 
 在 DSH Web 输入框下方增加一条紧凑的用量条，默认显示 **`总价≈¥… 今日 … tok≈¥…`**：总价是本对话累计费用；今日是本对话今天（北京时间）的 token 数与费用。点击后弹出面板，可切换「本对话 / 全部会话」，提供参照 [DeepSeek 开放平台用量页](https://platform.deepseek.com/usage) 的内容：按天趋势、按模型拆分、缓存命中/未命中/输出构成、请求数，以及 token 价格变化（当前峰谷价、下次切换时间、官方调价时间线）。
 
@@ -112,4 +112,4 @@ node test/local-audit.mjs   # 直接读本机会话日志，核对聚合结果�
 
 ## License
 
-[MIT](LICENSE) © 2026 Eakshell
+[MIT](LICENSE) © 2026 eakshelling

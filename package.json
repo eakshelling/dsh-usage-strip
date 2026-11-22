@@ -3,14 +3,14 @@
   "version": "1.3.0",
   "description": "Composer usage strip: this chat's total cost and today's tokens/cost, a switch to all local DSH sessions, and the official price-change timeline.",
   "license": "MIT",
-  "author": "Eakshell",
+  "author": "eakshelling",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Eakshell/dsh-usage-strip.git"
+    "url": "git+https://github.com/eakshelling/dsh-usage-strip.git"
   },
-  "homepage": "https://github.com/Eakshell/dsh-usage-strip#readme",
+  "homepage": "https://github.com/eakshelling/dsh-usage-strip#readme",
   "bugs": {
-    "url": "https://github.com/Eakshell/dsh-usage-strip/issues"
+    "url": "https://github.com/eakshelling/dsh-usage-strip/issues"
   },
   "keywords": [
     "dsh",

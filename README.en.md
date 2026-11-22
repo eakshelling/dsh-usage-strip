@@ -1,6 +1,6 @@
 # Usage & Cost (DSH plugin)
 
-[中文](README.md) · [MIT License](LICENSE) · [GitHub](https://github.com/Eakshell/dsh-usage-strip) · [npm](https://www.npmjs.com/package/dsh-usage-strip)
+[中文](README.md) · [MIT License](LICENSE) · [GitHub](https://github.com/eakshelling/dsh-usage-strip) · [npm](https://www.npmjs.com/package/dsh-usage-strip)
 
 A compact usage strip below the DSH Web composer. By default it shows **`total ≈¥… today … tok ≈¥…`**: total is this chat's cumulative estimated cost, today is this chat's token count and estimated cost for the current Beijing calendar day. Click it for a panel that mirrors the [DeepSeek Platform usage page](https://platform.deepseek.com/usage): daily trend, per-model breakdown, cache hit / miss / output composition, request count, and token price changes (current peak/valley rates, next switch, official price-change timeline).
 
@@ -103,4 +103,4 @@ API: `GET /dsh-usage/api.json?days=1|7|30|0[&session=<id>]` (loopback-only, same
 
 ## License
 
-[MIT](LICENSE) © 2026 Eakshell
+[MIT](LICENSE) © 2026 eakshelling
