@@ -46,7 +46,7 @@ const SESSION_RE = /^[A-Za-z0-9._:-]{1,200}$/
 /** This package's client-module id, used only for a read-only diagnostic. */
 const CLIENT_ID = 'dsh-usage-strip'
 /** Version reported in the diagnostic log. */
-const PLUGIN_VERSION = '1.3.1'
+const PLUGIN_VERSION = '1.3.2'
 /** Diagnostic log directory under the DSH home. */
 const LOG_DIR = path.join(process.env.DSH_HOME || path.join(os.homedir(), '.dsh'), 'logs')
 /** Single diagnostic log file. */

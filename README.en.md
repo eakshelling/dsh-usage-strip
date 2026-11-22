@@ -36,7 +36,7 @@ The plugin only reads locally persisted DSH session logs and writes one local di
 
 ## Install
 
-The npm package `dsh-usage-strip` is **not published yet**; use the [Release asset](https://github.com/eakshelling/dsh-usage-strip/releases/latest/download/dsh-usage-strip.tgz) (`dsh-usage-strip.tgz`, version `1.3.1`) or the local-directory install below. The plugin-market entry will be submitted once the repository meets the listing requirements.
+Published on npm: `npm install dsh-usage-strip` (or `pnpm add dsh-usage-strip`). You can also use the [Release asset](https://github.com/eakshelling/dsh-usage-strip/releases/latest/download/dsh-usage-strip.tgz) (`dsh-usage-strip.tgz`, version `1.3.2`) or the local-directory install below. The plugin-market entry will be submitted once the repository meets the listing requirements.
 
 For local development, install this directory with `plugin_manager`'s `install_bundle` (absolute path), or use **Plugins → Add plugin** and select the directory, then enable it.
 

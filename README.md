@@ -36,7 +36,7 @@
 
 ## 安装
 
-npm 包 `dsh-usage-strip` **尚未发布**；当前请使用 [Release 附件](https://github.com/eakshelling/dsh-usage-strip/releases/latest/download/dsh-usage-strip.tgz)（`dsh-usage-strip.tgz`，版本 `1.3.1`），或下面的本地目录安装方式。插件市场条目待仓库满足收录条件后提交。
+已发布到 npm：`npm install dsh-usage-strip`（或 `pnpm add dsh-usage-strip`）。也可以使用 [Release 附件](https://github.com/eakshelling/dsh-usage-strip/releases/latest/download/dsh-usage-strip.tgz)（`dsh-usage-strip.tgz`，版本 `1.3.2`），或下面的本地目录安装方式。插件市场条目待仓库满足收录条件后提交。
 
 本地开发目录仍可直接安装，方式二选一：
 
