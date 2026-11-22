@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Usage and cost">
+  <rect width="64" height="64" rx="15" fill="#4D6BFE"/>
+  <rect x="14" y="38" width="8" height="12" rx="2" fill="#FFFFFF" fill-opacity="0.72"/>
+  <rect x="28" y="29" width="8" height="21" rx="2" fill="#FFFFFF" fill-opacity="0.86"/>
+  <rect x="42" y="18" width="8" height="32" rx="2" fill="#FFFFFF"/>
+  <circle cx="18" cy="31" r="3" fill="#FFD166"/>
+  <path d="M24 27 L34 22" stroke="#FFD166" stroke-width="2.4" stroke-linecap="round"/>
+</svg>
