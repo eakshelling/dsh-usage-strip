@@ -1,6 +1,6 @@
 # Usage & Cost (DSH plugin)
 
-[中文](README.md) · [MIT License](LICENSE) · [GitHub](https://github.com/eakshelling/dsh-usage-strip) · [Release](https://github.com/eakshelling/dsh-usage-strip/releases/latest)
+[中文](README.md) · [MIT License](LICENSE) · [GitHub](https://github.com/eakshelling/dsh-usage-strip) · [npm](https://www.npmjs.com/package/dsh-usage-strip) · [Release](https://github.com/eakshelling/dsh-usage-strip/releases/latest)
 
 A compact usage strip below the DSH Web composer. By default it shows **`total ≈¥… today … tok ≈¥…`**: total prefers the built-in `tokenUsage` reading priced at current peak/valley rates, while the exact log cost stays in the panel; today is this chat's token count and estimated cost for the current Beijing calendar day. Click it for a panel that mirrors the [DeepSeek Platform usage page](https://platform.deepseek.com/usage): daily trend, per-model breakdown, cache hit / miss / output composition, request count, and token price changes (current peak/valley rates, next switch, official price-change timeline).
 
@@ -36,7 +36,7 @@ The plugin only reads locally persisted DSH session logs and writes one local di
 
 ## Install
 
-Published on npm: `npm install dsh-usage-strip` (or `pnpm add dsh-usage-strip`). You can also use the [Release asset](https://github.com/eakshelling/dsh-usage-strip/releases/latest/download/dsh-usage-strip.tgz) (`dsh-usage-strip.tgz`, version `1.3.2`) or the local-directory install below. The plugin-market entry will be submitted once the repository meets the listing requirements.
+Published on npm: `npm install dsh-usage-strip` (or `pnpm add dsh-usage-strip`); the [npm](https://www.npmjs.com/package/dsh-usage-strip) `latest` tag is authoritative for the version. You can also use the [Release asset](https://github.com/eakshelling/dsh-usage-strip/releases/latest/download/dsh-usage-strip.tgz) or the local-directory install below. The plugin-market entry will be submitted once the repository meets the listing requirements.
 
 For local development, install this directory with `plugin_manager`'s `install_bundle` (absolute path), or use **Plugins → Add plugin** and select the directory, then enable it.
 
