@@ -2,9 +2,9 @@
 
 [中文](README.md) · [MIT License](LICENSE) · [GitHub](https://github.com/eakshelling/dsh-usage-strip) · [npm](https://www.npmjs.com/package/dsh-usage-strip)
 
-A compact usage strip below the DSH Web composer. By default it shows **`total ≈¥… today … tok ≈¥…`**: total is this chat's cumulative estimated cost, today is this chat's token count and estimated cost for the current Beijing calendar day. Click it for a panel that mirrors the [DeepSeek Platform usage page](https://platform.deepseek.com/usage): daily trend, per-model breakdown, cache hit / miss / output composition, request count, and token price changes (current peak/valley rates, next switch, official price-change timeline).
+A compact usage strip below the DSH Web composer. By default it shows **`total ≈¥… today … tok ≈¥…`**: total prefers the built-in `tokenUsage` reading priced at current peak/valley rates, while the exact log cost stays in the panel; today is this chat's token count and estimated cost for the current Beijing calendar day. Click it for a panel that mirrors the [DeepSeek Platform usage page](https://platform.deepseek.com/usage): daily trend, per-model breakdown, cache hit / miss / output composition, request count, and token price changes (current peak/valley rates, next switch, official price-change timeline).
 
-The plugin only reads locally persisted DSH session logs. It makes no network requests, requires no login, and uploads nothing. Costs are estimates based on official prices, not an official bill; the project is not affiliated with DeepSeek.
+The plugin only reads locally persisted DSH session logs and writes one local diagnostic log. It makes no network requests, requires no login, and uploads nothing. Costs are estimates based on official prices, not an official bill; the project is not affiliated with DeepSeek.
 
 ## Features
 
@@ -24,19 +24,19 @@ The plugin only reads locally persisted DSH session logs. It makes no network re
 
 | Item | Definition |
 |---|---|
-| Source | Cost, daily/model detail, and the strip's total/today come from `assistant/message.usage` in locally persisted DSH session logs (provider-reported values). The panel's “built-in reading” for this chat + all-time uses DSH's `tokenUsage` projection (same source as the built-in usage pill). |
+| Source | Today, daily/model detail, and the panel's “exact log” card come from `assistant/message.usage` in locally persisted DSH session logs (provider-reported values). The strip's total and the panel's “built-in reading” use DSH's `tokenUsage` projection (same source as the built-in usage pill). |
 | Scope | Current chat by default; the panel can switch to all saved local sessions (including subagent sessions). Excludes other clients, API keys, and the website. |
 | Day boundary | Beijing time (UTC+8). |
-| Tokens | The built-in reading sums `uncachedInputTokens + cacheReadTokens + cacheWriteTokens + outputTokens` (reasoning is included once); the strip and 7/30-day ranges use log totals. |
+| Tokens | The strip's total and the built-in reading sum `uncachedInputTokens + cacheReadTokens + cacheWriteTokens + outputTokens` (reasoning is included once); today and 7/30-day ranges use log totals. |
 | Today | This chat's `assistant/message.usage` total for today (Beijing time); resets at midnight. |
-| Built-in estimate | Built-in token count × current peak/valley rate and log model shares; does not backfill historical price changes; only for this chat + all-time. |
+| Total / built-in estimate | Built-in token count × current peak/valley rate and log model shares; does not backfill historical price changes; the exact log cost is the panel's second card. |
 | Exact cost | Each log event priced at the official rates for its event day; not an official bill. |
 | Peak/valley | Beijing weekdays 09:00–12:00 and 14:00–18:00 are peak (2× price), effective 2026-08-17; weekends are all-valley from 2026-08-23; statutory holidays are all-valley from 2026-09-19. |
-| Forked sessions | Reads from `inheritedEventCount` and skips the inherited `session/end-seed` prefix, so parent history is not billed twice. |
+| Fork / restart | Always reads from event 0 and skips the last `session/end-seed` prefix; `inheritedEventCount` is diagnostic only, so a restart cannot skip the seed. |
 
 ## Install
 
-Install from the DSH plugin market by searching for `dsh-usage-strip`. The npm package is [`dsh-usage-strip`](https://www.npmjs.com/package/dsh-usage-strip), version `1.3.0`.
+Install from the DSH plugin market by searching for `dsh-usage-strip`. The npm package is [`dsh-usage-strip`](https://www.npmjs.com/package/dsh-usage-strip), version `1.3.1`.
 
 For local development, install this directory with `plugin_manager`'s `install_bundle` (absolute path), or use **Plugins → Add plugin** and select the directory, then enable it.
 
@@ -57,17 +57,30 @@ Official source: <https://api-docs.deepseek.com/zh-cn/quick_start/pricing>.
 - Only local DSH sessions are counted; other clients are not covered. Cost is an estimate, not a platform bill.
 - The strip appears only below the composer of a selected chat; the empty home screen shows nothing.
 - This chat's panel defaults to all-time: everything persisted for that session. A brand-new session that has not been persisted shows “this chat is being measured…” and does not fall back to all-session numbers.
-- The strip's “today” is this chat's usage today (Beijing time); with no usage today it shows 0 while total cost still renders.
+- The strip's “today” is this chat's usage today (Beijing time); with no usage today it shows 0 while the total still renders from built-in usage.
 - The all-time chart draws only the most recent 90 days; KPI and model totals still cover all time.
 - Before 2026-08-17 there was no peak/valley pricing; historical cost uses the valley rate as an approximation.
 - Forked sessions skip inherited parent history; if the parent log was deleted, that part is undercounted.
 - The first scan of a large local log set may take a moment; afterwards only changed sessions are reread.
 - The HTTP route binds to loopback and checks same-origin; other local processes can still read aggregate usage data (never credentials).
-- No session events are appended, no files are written, and no model-visible content is added (no tool, no prompt section).
+- No session events are appended, no session files are written, and no model-visible content is added (no tool, no prompt section); only the diagnostic log below is written.
+
+## Diagnostic log
+
+Every scan, session read, seed cut, and route request is appended to:
+
+```text
+%DSH_HOME%\logs\dsh-usage-strip.log
+```
+
+`DSH_HOME` defaults to `C:\Users\<user>\.dsh`. Lines are JSONL with time, event, `sessionId`, `eventCount`, `inheritedEventCount`, `readFrom` (always 0), `eventsRead`, `seedSeen`, folded token/cost totals, and route status. At about 1 MB the file rotates to `.log.1`; at most two files are kept.
+
+The log contains no prompts, message bodies, model output, or credentials. Delete it at any time. If the numbers are still zero after a restart, check the latest `session` line (`eventsRead`, `seedSeen`) and then the `route` line.
 
 ## Privacy & disclaimer
 
 - Reads local persisted session logs only; no network, no uploads, no writes to sessions, no model-visible additions.
+- Writes only the local diagnostic log `%DSH_HOME%\logs\dsh-usage-strip.log` (plus its rotation); no message content or credentials; safe to delete.
 - Costs are estimated from official prices, not an official bill; not affiliated with DeepSeek.
 - The route listens on loopback only and checks same-origin; other local processes can read aggregates (no credentials).
 - No telemetry or third-party tracking.
@@ -82,6 +95,7 @@ node --check pricing.js
 node test/pricing.test.mjs
 node test/aggregate.test.mjs
 node test/payload.test.mjs
+node test/read-session.test.mjs
 node test/local-audit.mjs   # reads local session logs to cross-check aggregates (development)
 ```
 

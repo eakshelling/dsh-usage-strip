@@ -6,8 +6,14 @@
  * The browser half renders the strip below the composer.
  *
  * No model-visible surface is added: no tool, no prompt section, no Session
- * event, and no file is written.
+ * event. The only file written is a diagnostic log in the DSH home directory;
+ * it contains session ids and aggregate token/cost counts, never prompts,
+ * messages, model output, or credentials.
  */
+
+import { appendFile, mkdir, rename, rm, stat } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
 
 import {
   addDays,
@@ -39,6 +45,45 @@ const SESSION_PARAM = 'session'
 const SESSION_RE = /^[A-Za-z0-9._:-]{1,200}$/
 /** This package's client-module id, used only for a read-only diagnostic. */
 const CLIENT_ID = 'dsh-usage-strip'
+/** Version reported in the diagnostic log. */
+const PLUGIN_VERSION = '1.3.1'
+/** Diagnostic log directory under the DSH home. */
+const LOG_DIR = path.join(process.env.DSH_HOME || path.join(os.homedir(), '.dsh'), 'logs')
+/** Single diagnostic log file. */
+const LOG_PATH = path.join(LOG_DIR, 'dsh-usage-strip.log')
+/** Rotate once the log reaches this size; one old file is kept. */
+const LOG_MAX_BYTES = 1_000_000
+/** Serializes appends so concurrent requests cannot interleave lines. */
+let logQueue = Promise.resolve()
+
+/**
+ * Append one diagnostic JSON line. Failures are reported to stderr but never
+ * propagate into the usage route.
+ * @param event - stable event name.
+ * @param fields - non-sensitive counts, ids, and durations.
+ * @returns the queued write.
+ */
+function log(event, fields = {}) {
+  const line = `${JSON.stringify({ ts: new Date().toISOString(), event, ...fields })}\n`
+  logQueue = logQueue.then(async () => {
+    try {
+      await mkdir(LOG_DIR, { recursive: true })
+      try {
+        const info = await stat(LOG_PATH)
+        if (info.size >= LOG_MAX_BYTES) {
+          await rm(`${LOG_PATH}.1`, { force: true }).catch(() => {})
+          await rename(LOG_PATH, `${LOG_PATH}.1`).catch(() => {})
+        }
+      } catch {
+        // The first append creates the file; a missing stat is expected.
+      }
+      await appendFile(LOG_PATH, line, 'utf8')
+    } catch (error) {
+      console.error('[dsh-usage] log-failed', error instanceof Error ? error.name : 'unknown')
+    }
+  })
+  return logQueue
+}
 
 /** A requested Session is not in the current persistence scan. */
 class UnknownSessionError extends Error {
@@ -106,39 +151,53 @@ function isLocalAuthority(authority, webServer) {
 /**
  * Read one stored Session's own events and fold them into usage buckets.
  *
- * The read starts at `inheritedEventCount` so a forked Session's inherited
- * prefix is never billed twice; the parent Session reports it.
+ * The read starts at event 0 and drops everything through the last
+ * `session/end-seed`, so a restart cannot skip the seed by starting past it.
+ * `inheritedEventCount` is logged for diagnosis, not used as the start offset.
  *
  * @param persistence - the profile's session persistence service.
  * @param id - stored Session id.
  * @param signal - service lifetime cancellation.
+ * @param logger - diagnostic sink; tests pass a no-op.
  * @returns the folded buckets for this Session plus its latest turn.
  */
-async function readSession(persistence, id, signal) {
+export async function readSession(persistence, id, signal, logger = log) {
   const handle = await persistence.open(id, 'read', { signal })
   const buckets = new Map()
+  const inherited = Number(handle.inheritedEventCount) || 0
   let turnEvents = []
+  let eventsRead = 0
+  let ownEvents = 0
+  let seedSeen = false
+  let offset = 0
   try {
-    let offset = Number(handle.inheritedEventCount) || 0
     for (;;) {
-      if (signal.aborted) throw new Error('dsh-usage: aborted')
+      if (signal && signal.aborted) throw new Error('dsh-usage: aborted')
       const result = await handle.read(offset, READ_SLICE, { signal })
       const events = result && result.events ? result.events : []
       if (events.length === 0) break
+      eventsRead += events.length
       // A forked/continued Session can carry an inherited prefix terminated by
-      // a `session/end-seed` event. Count only the Session's own turns; the
-      // handle's inheritedEventCount is not reliable for every generation.
+      // a `session/end-seed` event. Read from event 0 so a restart cannot start
+      // past the seed; count only events after the last seed in this slice.
       let own = events
+      let seedIndex = -1
       for (let index = events.length - 1; index >= 0; index -= 1) {
         if (events[index] && events[index].type === 'session/end-seed') {
-          own = events.slice(index + 1)
-          buckets.clear()
-          turnEvents = []
+          seedIndex = index
           break
         }
       }
+      if (seedIndex >= 0) {
+        seedSeen = true
+        own = events.slice(seedIndex + 1)
+        buckets.clear()
+        turnEvents = []
+        logger('seed', { sessionId: id, sliceOffset: offset, seedIndex, sliceEvents: events.length })
+      }
       if (own.length > 0) {
         mergeBuckets(buckets, foldEvents(own))
+        ownEvents += own.length
         // Keep only the latest completed/active turn. `turn/start` is the
         // durable boundary; all usage after it belongs to the current turn.
         for (const event of own) {
@@ -157,7 +216,27 @@ async function readSession(persistence, id, signal) {
       // A close failure must not mask the fold result.
     }
   }
-  return { buckets, turn: foldEvents(turnEvents) }
+  const turn = foldEvents(turnEvents)
+  const totals = summarize(buckets, '1970-01-01', beijingDay(Date.now()))
+  const turnTotals = summarize(turn, '1970-01-01', beijingDay(Date.now()))
+  if (!seedSeen && inherited > 0) {
+    logger('no-seed-inherited', { sessionId: id, inheritedEventCount: inherited, eventsRead })
+  }
+  logger('session', {
+    sessionId: id,
+    inheritedEventCount: inherited,
+    readFrom: 0,
+    eventsRead,
+    ownEvents,
+    seedSeen,
+    buckets: buckets.size,
+    tokens: totals.tokens,
+    cost: totals.cost,
+    requests: totals.requests,
+    turnTokens: turnTotals.tokens,
+    turnRequests: turnTotals.requests,
+  })
+  return { buckets, turn }
 }
 
 /**
@@ -275,10 +354,12 @@ function createService(scope) {
   async function scan() {
     if (scanFlight !== null) return scanFlight
     scanFlight = (async () => {
+      const startedAt = Date.now()
       let snapshots = []
       try {
         snapshots = await persistence.list({})
       } catch (error) {
+        log('error', { code: 'list-failed', name: error instanceof Error ? error.name : 'unknown' })
         report('list-failed', { sessions: 0 })
         throw error
       }
@@ -300,11 +381,21 @@ function createService(scope) {
         } catch (error) {
           failed += 1
           warnings.push('session-read-failed')
+          log('session-failed', {
+            sessionId: id,
+            name: error instanceof Error ? error.name : 'unknown',
+          })
           if (previous !== undefined) next.set(id, previous)
         }
       }
       sessionCache = next
       lastStats = { total: snapshots.length, failed, warnings: [...new Set(warnings)] }
+      log('scan', {
+        sessions: lastStats.total,
+        failed,
+        warnings: lastStats.warnings,
+        ms: Date.now() - startedAt,
+      })
       return lastStats
     })().finally(() => {
       scanFlight = null
@@ -381,15 +472,33 @@ function createService(scope) {
    * @returns the response payload.
    */
   async function aggregate(days, lang, sessionId) {
+    const startedAt = Date.now()
     const key = `${sessionId ?? '*'}:${days}:${lang}`
     const cached = results.get(key)
-    if (cached !== undefined && Date.now() - cached.at < RESULT_TTL_MS) return cached.data
+    if (cached !== undefined && Date.now() - cached.at < RESULT_TTL_MS) {
+      log('aggregate', {
+        scope: sessionId === null || sessionId === undefined ? 'all' : 'session',
+        days,
+        cached: true,
+        ms: Date.now() - startedAt,
+      })
+      return cached.data
+    }
     await scan()
     if (sessionId !== null && sessionId !== undefined && !sessionCache.has(sessionId)) {
       throw new UnknownSessionError(sessionId)
     }
     const data = build(days, Date.now(), lang, sessionId)
     results.set(key, { at: Date.now(), data })
+    log('aggregate', {
+      scope: data.scope,
+      days,
+      sessionId: data.meta.sessionId,
+      cached: false,
+      ms: Date.now() - startedAt,
+      tokens: data.range.totals.tokens,
+      cost: data.range.totals.cost,
+    })
     return data
   }
 
@@ -436,19 +545,45 @@ function createService(scope) {
    * @returns the JSON response.
    */
   async function respond(request) {
-    if (!allowed(request)) return json(403, { ok: false, code: 'forbidden' })
+    if (!allowed(request)) {
+      log('route', { status: 403, code: 'forbidden' })
+      return json(403, { ok: false, code: 'forbidden' })
+    }
     let url
     try {
       url = new URL(request.url)
     } catch {
+      log('route', { status: 400, code: 'bad-request' })
       return json(400, { ok: false, code: 'bad-request' })
     }
     const query = parseQuery(url)
-    if (query.badSession) return json(400, { ok: false, code: 'bad-session' })
+    if (query.badSession) {
+      log('route', { status: 400, code: 'bad-session', days: query.days })
+      return json(400, { ok: false, code: 'bad-session' })
+    }
     try {
-      return json(200, await aggregate(query.days, query.lang, query.sessionId))
+      const data = await aggregate(query.days, query.lang, query.sessionId)
+      log('route', {
+        status: 200,
+        scope: data.scope,
+        days: data.range.days,
+        sessionId: data.meta.sessionId,
+        tokens: data.range.totals.tokens,
+        cost: data.range.totals.cost,
+        turnTokens: data.turn === null ? 0 : data.turn.tokens,
+      })
+      return json(200, data)
     } catch (error) {
-      if (error instanceof UnknownSessionError) return json(404, { ok: false, code: 'unknown-session' })
+      if (error instanceof UnknownSessionError) {
+        log('route', { status: 404, code: 'unknown-session', days: query.days })
+        return json(404, { ok: false, code: 'unknown-session' })
+      }
+      log('route', {
+        status: 500,
+        code: 'error',
+        days: query.days,
+        name: error instanceof Error ? error.name : 'unknown',
+      })
       report('aggregate-failed', { reason: error instanceof Error ? error.name : 'unknown' })
       return json(500, { ok: false, code: 'error' })
     }
@@ -456,10 +591,12 @@ function createService(scope) {
 
   /** Release listeners, timers, and in-flight work. */
   function dispose() {
+    const sessions = sessionCache.size
     disposed = true
     controller.abort()
     results.clear()
     sessionCache = new Map()
+    log('dispose', { sessions })
   }
 
   return { respond, dispose }
@@ -470,6 +607,7 @@ function createService(scope) {
  * @param ctx - plugin context.
  */
 export function apply(ctx) {
+  log('start', { version: PLUGIN_VERSION, route: ROUTE_PATH, logPath: LOG_PATH })
   ctx.inject(['sessionPersistence', 'webServer'], (scope) => {
     const service = createService(scope)
     scope.effect(() => () => {

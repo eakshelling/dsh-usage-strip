@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Usage and cost",
-    "description": "Shows this chat's total cost and today's tokens/cost below the composer. Click for the built-in token estimate, exact per-event log cost, all local sessions, today's usage/peak status, daily and per-model detail, cache hit rate, and official token price changes. Data comes from local DSH session logs and the built-in usage meter; excludes other clients and the website.",
+    "description": "Shows this chat's estimated total cost and today's tokens/cost below the composer. Click for the built-in token estimate, exact per-event log cost, all local sessions, today's usage/peak status, daily and per-model detail, cache hit rate, and official token price changes. Data comes from local DSH session logs and the built-in usage meter; excludes other clients and the website.",
     "detail": "README.en.md"
   }
 }

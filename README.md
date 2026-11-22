@@ -2,9 +2,9 @@
 
 [English](README.en.md) · [MIT License](LICENSE) · [GitHub](https://github.com/eakshelling/dsh-usage-strip) · [npm](https://www.npmjs.com/package/dsh-usage-strip)
 
-在 DSH Web 输入框下方增加一条紧凑的用量条，默认显示 **`总价≈¥… 今日 … tok≈¥…`**：总价是本对话累计费用；今日是本对话今天（北京时间）的 token 数与费用。点击后弹出面板，可切换「本对话 / 全部会话」，提供参照 [DeepSeek 开放平台用量页](https://platform.deepseek.com/usage) 的内容：按天趋势、按模型拆分、缓存命中/未命中/输出构成、请求数，以及 token 价格变化（当前峰谷价、下次切换时间、官方调价时间线）。
+在 DSH Web 输入框下方增加一条紧凑的用量条，默认显示 **`总价≈¥… 今日 … tok≈¥…`**：总价优先用输入框旁内置 `tokenUsage` 读数按当前峰谷价估算，日志精确值保留在面板中；今日是本对话今天（北京时间）的 token 数与费用。点击后弹出面板，可切换「本对话 / 全部会话」，提供参照 [DeepSeek 开放平台用量页](https://platform.deepseek.com/usage) 的内容：按天趋势、按模型拆分、缓存命中/未命中/输出构成、请求数，以及 token 价格变化（当前峰谷价、下次切换时间、官方调价时间线）。
 
-本插件只读取本机 DSH 已持久化的会话日志，不联网、不需要登录、不上传数据；费用是按官方价目做的估算，不是官方账单，也与 DeepSeek 官方没有隶属关系。
+本插件只读取本机 DSH 已持久化的会话日志，并写一份本地诊断日志；不联网、不需要登录、不上传数据。费用是按官方价目做的估算，不是官方账单，也与 DeepSeek 官方没有隶属关系。
 
 ## 功能
 
@@ -24,19 +24,19 @@
 
 | 项目 | 口径 |
 |---|---|
-| 数据来源 | 费用、分日/分模型明细、紧凑条的“总价/今日”来自本机 DSH 已持久化会话日志中的 `assistant/message.usage`（provider 真实上报值）；面板「本对话 · 全部」的现成读数取自 DSH 内置 `tokenUsage` projection（与输入框旁内置用量胶囊同源） |
+| 数据来源 | 今日、分日/分模型明细和面板“日志精确”来自本机 DSH 已持久化会话日志中的 `assistant/message.usage`（provider 真实上报值）；紧凑条总价、面板「现成读数」取自 DSH 内置 `tokenUsage` projection（与输入框旁内置用量胶囊同源） |
 | 范围 | 默认当前会话；面板可切换本机全部已保存会话（含子代理会话）；不含其他客户端、API Key 或网页端用量 |
 | 日界 | 北京时间（UTC+8） |
-| tokens | 面板现成读数使用内置 projection 的 `uncachedInputTokens` + `cacheReadTokens` + `cacheWriteTokens` + `outputTokens`（已含推理 token，不重复计）；紧凑条与 7/30 天等范围按日志口径统计 |
+| tokens | 紧凑条总价与面板现成读数使用内置 projection 的 `uncachedInputTokens` + `cacheReadTokens` + `cacheWriteTokens` + `outputTokens`（已含推理 token，不重复计）；今日与 7/30 天等范围按日志口径统计 |
 | 今日 | 本对话今天（北京时间）的 `assistant/message.usage` 合计；跨日自动归零重计 |
-| 现成费用 | 内置 token 数 × 当前峰谷价与日志模型占比估算，不追溯历史调价；仅本对话「全部」范围 |
+| 总价/现成费用 | 内置 token 数 × 当前峰谷价与日志模型占比估算，不追溯历史调价；紧凑条显示 `≈`，日志精确值在面板第二块 |
 | 精确费用 | 逐条日志按事件发生日的官方价目计价；不是官方账单 |
 | 峰谷 | 工作日 9:00–12:00、14:00–18:00 为高峰（2 倍价）；2026-08-17 起生效，2026-08-23 起周末全天谷价，2026-09-19 起法定节假日全天谷价 |
-| 分叉会话 | 从 `inheritedEventCount` 开始读取，并跳过 `session/end-seed` 之前的继承前缀；父会话已计过的历史不重复计费 |
+| 分叉/重启 | 每次都从事件 0 读取，并跳过最后一个 `session/end-seed` 之前的继承前缀；`inheritedEventCount` 只记录到诊断日志，不作为起点，避免重启后跳过 seed |
 
 ## 安装
 
-发布后可从 DSH 插件市场搜索 `dsh-usage-strip` 安装；npm 包名为 [`dsh-usage-strip`](https://www.npmjs.com/package/dsh-usage-strip)，当前版本 `1.3.0`。
+发布后可从 DSH 插件市场搜索 `dsh-usage-strip` 安装；npm 包名为 [`dsh-usage-strip`](https://www.npmjs.com/package/dsh-usage-strip)，当前版本 `1.3.1`。
 
 本地开发目录仍可直接安装，方式二选一：
 
@@ -66,11 +66,24 @@
 - 分叉会话继承的父历史被跳过；若父会话日志已被删除，该部分会少计。
 - 本地日志数量增长后，进程内首次统计可能需要一点时间；之后只重读变化的会话。
 - 服务路由仅监听回环并校验同源；本机其他进程仍可读取聚合后的用量数据（不含任何凭据）。
-- 不追加 session 事件、不写文件、不改变模型可见内容（无工具、无提示词）。
+- 不追加 session 事件、不写会话文件、不改变模型可见内容（无工具、无提示词）；只写 `%DSH_HOME%\logs\dsh-usage-strip.log` 诊断日志。
+
+## 诊断日志
+
+每次扫描、读取会话、seed 截断和路由请求都会追加到：
+
+```text
+%DSH_HOME%\logs\dsh-usage-strip.log
+```
+
+默认 `DSH_HOME` 为 `C:\Users\<user>\.dsh`。日志为 JSONL，字段包括时间、事件、sessionId、`eventCount`、`inheritedEventCount`、`readFrom`（固定为 0）、`eventsRead`、`seedSeen`、折叠后的 token/cost、路由状态。达到约 1 MB 时轮转为 `.log.1`，最多保留两份。
+
+日志不包含提示词、消息正文、模型输出或凭据；可随时删除。重启后仍是 0 时，先看最近 `session` 行的 `eventsRead`/`seedSeen`，再看 `route` 行。
 
 ## 隐私与免责声明
 
 - 只读本机 DSH 已持久化的会话日志；不联网、不上传数据、不写入会话、不新增模型可见内容。
+- 仅写本地诊断日志 `%DSH_HOME%\logs\dsh-usage-strip.log`（及轮转文件）；不含消息内容或凭据，可随时删除。
 - 费用按官方价目估算，不是官方账单；与 DeepSeek 官方没有隶属关系。
 - 路由仅监听回环地址并校验同源；本机其他进程仍可读取聚合后的用量数据（不含任何凭据）。
 - 市场安装时，DSH 会按插件包声明的 `dsh.bundle` 加载；本插件不包含遥测或第三方追踪。
@@ -85,6 +98,7 @@ node --check pricing.js
 node test/pricing.test.mjs
 node test/aggregate.test.mjs
 node test/payload.test.mjs
+node test/read-session.test.mjs
 node test/local-audit.mjs   # 直接读本机会话日志，核对聚合结果（含每会话明细，开发用）
 ```
 
@@ -94,7 +108,7 @@ node test/local-audit.mjs   # 直接读本机会话日志，核对聚合结果�
 
 - 紧凑条没出现：先刷新页面。客户端 bundle 的注册信息可在 `GET /dsh-usage/api.json` 的 `meta.client` 中查看（`registered: true` 表示 Host 的客户端模块图已收录本插件）；若仍为 `false`，重启 DSH。
 - 面板显示「用量不可用」：确认 Host 端 `sessionPersistence` 与 `webServer` 已挂载（Web / Desktop 版默认都有）。
-- 数字为空或偏小：会话日志尚未落盘（新建会话刚产生用量时需要一次落盘），或会话格式不被当前版本读取；接口的 `warnings` 会给出计数。
+- 数字为空或偏小：会话日志尚未落盘（新建会话刚产生用量时需要一次落盘），或会话格式不被当前版本读取；接口的 `warnings` 会给出计数。重启后归零时查看 `%DSH_HOME%\logs\dsh-usage-strip.log` 的 `session`/`route` 行（`readFrom: 0`、`seedSeen`、`eventsRead`）。
 
 ## 文件
 

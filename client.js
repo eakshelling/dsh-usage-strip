@@ -577,12 +577,20 @@ window.__ModuleLoader__.load({
       const isPeak = !!(pricing && pricing.now && pricing.now.isPeak)
       const projectionTokens = sessionId ? tokenUsageTotal(usage) : null
       const projectionCost = sessionId ? estimateProjectionCost(usage, pricing, data ? data.range.models : null) : null
+      // The whole-chat total is the built-in tokenUsage estimate when that
+      // reading exists; the log cost is only a fallback. The exact log value
+      // stays visible in the panel's second block.
+      const totalCost = sessionId
+        ? (projectionCost !== null ? projectionCost : (totals && totals.cost > 0 ? totals.cost : null))
+        : (today ? today.cost : null)
 
       let text = t('loading')
       if (failed) text = t('unavailable')
       else if (unknown) text = t('sessionPending')
       else if (totals && sessionId) {
-        const total = `${t('totalApprox')}≈¥${money(totals.cost)}`
+        const total = totalCost === null
+          ? `${t('totalApprox')}≈¥—`
+          : `${t('totalApprox')}≈¥${money(totalCost)}`
         const current = today
           ? `${t('today')} ${compact(today.tokens)} ${t('turnUnit')}≈¥${money(today.cost)}`
           : `${t('today')} —`
@@ -593,8 +601,9 @@ window.__ModuleLoader__.load({
       // The strip leads with the whole-chat cost, then today's tokens and
       // cost. The panel still keeps the two detailed readings.
       const shown = sessionId ? totals : today
+      const totalLabel = totalCost === null ? '—' : `¥${moneyFine(totalCost)}`
       const label = shown
-        ? `${sessionId ? t('scopeSession') : t('scopeTitle')}：${t('totalApprox')} ≈¥${moneyFine(shown.cost)}${
+        ? `${sessionId ? t('scopeSession') : t('scopeTitle')}：${t('totalApprox')} ≈${totalLabel}${
           today
             ? `${t('turnSeparator')}${t('today')} ${exact(today.tokens)} ${t('tokens')} ≈¥${moneyFine(today.cost)}`
             : ''
